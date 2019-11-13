@@ -5,7 +5,7 @@ use curve25519_dalek::{ristretto::RistrettoPoint, scalar::Scalar};
 use merlin::Transcript;
 
 // Linear Map Pre-Image Argument without zero knowledge
-struct SimpleZK {
+pub struct SimpleZK {
     no_zk: no_zk::NoZK,
     a: Vec<RistrettoPoint>,
 }
