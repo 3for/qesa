@@ -2,7 +2,7 @@ mod copy;
 mod ipa;
 pub mod lmpa;
 mod math_utils;
-mod matrix;
+pub mod matrix;
 pub mod qesa_zk;
 mod transcript;
 
