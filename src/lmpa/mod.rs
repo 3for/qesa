@@ -1,2 +1,2 @@
-mod no_zk;
-mod simple_zk;
+pub mod no_zk;
+pub mod simple_zk;

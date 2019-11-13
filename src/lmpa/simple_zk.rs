@@ -10,7 +10,7 @@ struct SimpleZK {
     a: Vec<RistrettoPoint>,
 }
 
-fn create(
+pub fn create(
     transcript: &mut Transcript,
     mut A: Vec<Vec<RistrettoPoint>>,
     G_Vec: Vec<RistrettoPoint>,
