@@ -53,6 +53,7 @@ pub fn create(
         R_Vec.push(R);
 
         let challenge = transcript.challenge_scalar(b"challenge");
+        println!("zouyudi-create challenge:{:?}", challenge);
 
         let challenge_matrix = matrixpoint_scalar_mul(&A_1, &challenge);
         A = matrixpoint_matrix_add(&A_0, &challenge_matrix);
@@ -113,6 +114,7 @@ impl NoZK {
             }
 
             let challenge = transcript.challenge_scalar(b"challenge");
+            println!("zouyudi-verify challenge:{:?}", challenge);
             let challenge_matrix = matrixpoint_scalar_mul(&A_1, &challenge);
             A = matrixpoint_matrix_add(&A_0, &challenge_matrix);
 

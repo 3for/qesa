@@ -153,3 +153,29 @@ pub fn matrixpoint_matrix_add(
         .map(|(row_a, row_b)| rowpoint_rowpoint_add(row_a, row_b))
         .collect()
 }
+
+
+pub fn matrixpoint_transpose(
+    matrix: &Vec<Vec<RistrettoPoint>>,
+) -> Vec<Vec<RistrettoPoint>> {
+    let m = matrix.len();
+    assert!(m > 0);
+    let n = matrix[0].len();
+    println!("zouyudi-m:{:?}, n:{:?}", m, n);
+    let mut matrix_transpose = vec![vec![RistrettoPoint::identity(); m]; n];
+    /*matrix
+        .iter().enumerate()
+        .map(|(i, row)| {
+            let vals: Vec<RistrettoPoint> =
+                row.iter().enumerate().map(|(j, b)| {matrix_transpose[j][i] = *b; matrix_transpose[j][i]}).collect();
+            vals
+        })
+        .collect()*/
+
+    for (_, row) in matrix.iter().enumerate() {
+        for (i, element) in row.iter().enumerate() {
+            matrix_transpose[i].push(element.clone());
+        }
+    }
+    matrix_transpose
+}
