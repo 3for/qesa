@@ -42,38 +42,6 @@ pub fn create(
 }
 
 
-pub fn create_efficient(
-    transcript: &mut Transcript,
-    mut A: Vec<Vec<RistrettoPoint>>, //mxn matrix
-    G_Vec: Vec<RistrettoPoint>, //TODO: unused, remove later.
-    H_Vec: Vec<RistrettoPoint>, //TODO: unused, remove later.
-    Q: &RistrettoPoint,
-    w: Vec<Scalar>, //n
-    y: Vec<Scalar>, //m
-) -> SimpleZK {
-    let mut n = G_Vec.len();
-
-    let mut rng = rand::thread_rng();
-    let r: Vec<Scalar> = (0..n).map(|_| Scalar::random(&mut rng)).collect();
-
-    let a = matrixpoint_vector_mul(&A, &r);
-    for element in a.iter() {
-        transcript.append_message(b"a", element.compress().as_bytes());
-    }
-
-    let beta = transcript.challenge_scalar(b"beta");
-
-    let w_prime = w
-        .iter()
-        .zip(r.iter())
-        .map(|(witness, random)| beta * witness + random)
-        .collect();
-
-    let proof = no_zk::create(transcript, A, G_Vec, H_Vec, &Q, w_prime);
-
-    SimpleZK { a: a, no_zk: proof }
-}
-
 impl SimpleZK {
     pub fn verify(
         &self,
