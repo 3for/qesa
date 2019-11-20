@@ -132,7 +132,7 @@ impl NoZK {
 
         let expected_t = matrixpoint_vector_mul(&A, &base_witnes);
 
-        expected_t[0] == t[0]
+        expected_t[0].compress() == t[0].compress()
     }
 }
 use sha3::Sha3_512;
