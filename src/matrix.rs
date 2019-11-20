@@ -162,7 +162,7 @@ pub fn matrixpoint_transpose(
     assert!(m > 0);
     let n = matrix[0].len();
     println!("zouyudi-m:{:?}, n:{:?}", m, n);
-    let mut matrix_transpose = vec![vec![RistrettoPoint::identity(); m]; n];
+    let mut matrix_transpose = vec![Vec::new(); matrix[0].len()];
     /*matrix
         .iter().enumerate()
         .map(|(i, row)| {
@@ -178,4 +178,69 @@ pub fn matrixpoint_transpose(
         }
     }
     matrix_transpose
+}
+
+pub fn matrixa_transpose(
+    matrix: &Vec<Vec<usize>>,
+) -> Vec<Vec<usize>> {
+    let m = matrix.len();
+    assert!(m > 0);
+    let n = matrix[0].len();
+    println!("zouyudi-m:{:?}, n:{:?}", m, n);
+    let mut matrix_transpose = vec![Vec::new(); matrix[0].len()];
+    /*matrix
+        .iter().enumerate()
+        .map(|(i, row)| {
+            let vals: Vec<RistrettoPoint> =
+                row.iter().enumerate().map(|(j, b)| {matrix_transpose[j][i] = *b; matrix_transpose[j][i]}).collect();
+            vals
+        })
+        .collect()*/
+
+    for (_, row) in matrix.iter().enumerate() {
+        for (i, element) in row.iter().enumerate() {
+            matrix_transpose[i].push(element.clone());
+        }
+    }
+    matrix_transpose
+}
+
+pub fn vandemonde_matrix(m: usize, n: usize) -> Vec<Vec<Scalar>> {
+    let mut rng = rand::thread_rng();
+
+    let mut matrix: Vec<Vec<Scalar>> = Vec::new();
+
+    for _ in 0..m {
+        let challenge: Scalar = Scalar::random(&mut rng);
+        let a: Vec<Scalar> = vandemonde_vector(challenge, n);
+
+        matrix.push(a);
+    }
+
+    matrix
+}
+
+pub fn vandemonde_vector(mut x: Scalar, n: usize) -> Vec<Scalar> {
+    let mut challenges: Vec<Scalar> = Vec::new();
+    challenges.push(Scalar::one());
+    for _ in 1..n {
+        challenges.push(x);
+        x = x * x;
+    }
+
+    challenges
+}
+
+pub fn rand_matrix(m: usize, n: usize) -> Vec<Vec<RistrettoPoint>> {
+    let mut rng = rand::thread_rng();
+
+    let mut matrix: Vec<Vec<RistrettoPoint>> = Vec::new();
+
+    for _ in 0..m {
+        let a: Vec<RistrettoPoint> = (0..n).map(|_| RistrettoPoint::random(&mut rng)).collect();
+
+        matrix.push(a);
+    }
+
+    matrix
 }

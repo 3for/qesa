@@ -145,48 +145,10 @@ fn test_lmpa_simple_zk_create_verify_efficient_communication() {
     assert!(proof.verify(&mut verifier_transcript, A_efficient, G, H, &Q, n, t_efficient));
 }
 
-fn rand_matrix(m: usize, n: usize) -> Vec<Vec<RistrettoPoint>> {
-    let mut rng = rand::thread_rng();
 
-    let mut matrix: Vec<Vec<RistrettoPoint>> = Vec::new();
-
-    for _ in 0..m {
-        let a: Vec<RistrettoPoint> = (0..n).map(|_| RistrettoPoint::random(&mut rng)).collect();
-
-        matrix.push(a);
-    }
-
-    matrix
-}
-
-fn vandemonde_matrix(m: usize, n: usize) -> Vec<Vec<Scalar>> {
-    let mut rng = rand::thread_rng();
-
-    let mut matrix: Vec<Vec<Scalar>> = Vec::new();
-
-    for _ in 0..m {
-        let challenge: Scalar = Scalar::random(&mut rng);
-        let a: Vec<Scalar> = vandemonde_vector(challenge, n);
-
-        matrix.push(a);
-    }
-
-    matrix
-}
-
-fn vandemonde_vector(mut x: Scalar, n: usize) -> Vec<Scalar> {
-    let mut challenges: Vec<Scalar> = Vec::new();
-    challenges.push(Scalar::one());
-    for _ in 1..n {
-        challenges.push(x);
-        x = x * x;
-    }
-
-    challenges
-}
 
 #[test]
-fn test_lmpa_simple_zk_create_verify_batch() {
+fn test_lmpa_batch() {
     // Step 3.3 in qesa paper.
     // Efficient communication based on 1.1.1 Probabilistic Verification in qesa paper.
     // where vector y is [y,y^2,...,y^m], and a is a single point independent of m.
@@ -262,3 +224,4 @@ pub fn pedersen_commit(
 
     commitment
 }
+
