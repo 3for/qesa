@@ -3,6 +3,8 @@ use crate::math_utils::inner_product;
 use curve25519_dalek::ristretto::RistrettoPoint;
 use curve25519_dalek::scalar::Scalar;
 use curve25519_dalek::traits::Identity;
+use std::ops::{Add, Mul};
+use std::fmt::Debug;
 
 // Multiplies every element in the matrix by the scalar
 // Returns the new matrix
@@ -130,6 +132,79 @@ pub fn matrixpoint_vector_mul(
         })
         .collect()
 }
+
+// More general! 
+// Takes a matrix and a vector
+// Returns a new vector i.e. (Ax=b)
+pub fn matrix_vector_mul_general<T>(
+    matrix: &Vec<Vec<T>>,
+    vec: &[T],
+    identity: T, //zero val.
+) -> Vec<T> 
+where 
+    T: Mul<Output=T> + Add<Output=T> + Copy + Clone, 
+{
+    matrix
+        .iter()
+        .map(|row| {
+            let vals: Vec<T> =
+                row.iter().zip(vec.iter()).map(|(a, b)| *a * *b).collect();
+
+            let mut ip = identity;
+            for val in vals {
+                ip = ip + val;
+            }
+
+            ip
+        })
+        .collect()
+}
+
+// More general!
+// Multiplies every element in the matrix by the scalar
+// Returns the new matrix
+pub fn matrix_scalar_mul_general<T>(
+    matrix: &Vec<Vec<T>>,
+    x: &T,
+) -> Vec<Vec<T>> 
+where 
+    T: Mul<Output=T> + Add<Output=T> + Copy + Clone + Debug, 
+{
+    println!("zouyudi matrix:{:?}, x:{:?}", matrix, x);
+    matrix
+        .iter()
+        .map(|row| row.iter().map(|elem| *elem * *x).collect())
+        .collect()
+}
+
+// More general!
+// Takes two rows and adds them together
+// The (i) entry of row a is added to the i entry of row b
+pub fn row_row_add_general<T>(
+    row_a: &[T],
+    row_b: &[T],
+) -> Vec<T> 
+where T: Add<Output=T> + Copy + Clone {
+    assert_eq!(row_a.len(), row_b.len());
+
+    row_a.iter().zip(row_b.iter()).map(|(a, b)| *a + *b).collect()
+}
+
+// More general!
+// Takes two matrices and adds them together
+// The (i,j) entry of matrix A is added to the (i,j) entry of B
+pub fn matrix_matrix_add_general<T>(A: &Vec<Vec<T>>, B: &Vec<Vec<T>>) -> Vec<Vec<T>> 
+where 
+    T: Add<Output=T> + Copy + Clone,
+{
+    assert_eq!(A.len(), B.len());
+
+    A.iter()
+        .zip(B.iter())
+        .map(|(row_a, row_b)| row_row_add_general(row_a, row_b))
+        .collect()
+}
+
 // Takes two rows and adds them together
 // The (i) entry of row a is added to the i entry of row b
 pub fn rowpoint_rowpoint_add(
@@ -180,30 +255,29 @@ pub fn matrixpoint_transpose(
     matrix_transpose
 }
 
-pub fn matrixa_transpose(
-    matrix: &Vec<Vec<usize>>,
-) -> Vec<Vec<usize>> {
+pub fn matrix_split<T: Copy>(
+    matrix: &Vec<Vec<T>>,
+    chunk_size: usize, 
+) -> Vec<Vec<Vec<T>>> {
     let m = matrix.len();
     assert!(m > 0);
     let n = matrix[0].len();
-    println!("zouyudi-m:{:?}, n:{:?}", m, n);
-    let mut matrix_transpose = vec![Vec::new(); matrix[0].len()];
-    /*matrix
-        .iter().enumerate()
-        .map(|(i, row)| {
-            let vals: Vec<RistrettoPoint> =
-                row.iter().enumerate().map(|(j, b)| {matrix_transpose[j][i] = *b; matrix_transpose[j][i]}).collect();
-            vals
-        })
-        .collect()*/
+    assert!(n%chunk_size == 0);
 
+    let mut matrix_splited: Vec<_>= vec![Vec::new(); n/chunk_size];
     for (_, row) in matrix.iter().enumerate() {
-        for (i, element) in row.iter().enumerate() {
-            matrix_transpose[i].push(element.clone());
+        let mut r_chunks: Vec<_> = row.chunks(chunk_size).collect();
+        let mut i = 0;
+        for r_chunk in r_chunks {
+            matrix_splited[i].push(r_chunk.to_vec());
+            i += 1;
         }
     }
-    matrix_transpose
+   
+    matrix_splited
 }
+
+
 
 pub fn vandemonde_matrix(m: usize, n: usize) -> Vec<Vec<Scalar>> {
     let mut rng = rand::thread_rng();
@@ -223,6 +297,20 @@ pub fn vandemonde_matrix(m: usize, n: usize) -> Vec<Vec<Scalar>> {
 pub fn vandemonde_vector(mut x: Scalar, n: usize) -> Vec<Scalar> {
     let mut challenges: Vec<Scalar> = Vec::new();
     challenges.push(Scalar::one());
+    for _ in 1..n {
+        challenges.push(x);
+        x = x * x;
+    }
+
+    challenges
+}
+
+pub fn vandemonde_vector_general<T>(mut x: T, n: usize, one: T) -> Vec<T> 
+where 
+    T: Mul<Output=T> + Add<Output=T> + Copy + Clone,
+{
+    let mut challenges: Vec<T> = Vec::new();
+    challenges.push(one);
     for _ in 1..n {
         challenges.push(x);
         x = x * x;
