@@ -170,10 +170,25 @@ pub fn matrix_scalar_mul_general<T>(
 where 
     T: Mul<Output=T> + Add<Output=T> + Copy + Clone + Debug, 
 {
-    println!("zouyudi matrix:{:?}, x:{:?}", matrix, x);
     matrix
         .iter()
         .map(|row| row.iter().map(|elem| *elem * *x).collect())
+        .collect()
+}
+
+// More general!
+// Multiplies every element in the vector by the scalar
+// Returns the new matrix
+pub fn vector_scalar_mul_general<T>(
+    in_vec: &Vec<T>,
+    x: &T,
+) -> Vec<T> 
+where 
+    T: Mul<Output=T> + Add<Output=T> + Copy + Clone + Debug, 
+{
+    in_vec
+        .iter()
+        .map(|elem| *elem * *x)
         .collect()
 }
 

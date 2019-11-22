@@ -245,7 +245,7 @@ fn test_lmpa_no_zk_create_verify() {
 }
 
 #[test]
-fn test_matrix_split() {
+fn test_lmpa_noZK_float() {
     /*let r_1 = vec![0,1,2,6,7,8];
     let r_2 = vec![3,4,5,9,10,11];
     let mut m: Vec<Vec<_>> = vec![r_1.clone()];
@@ -253,6 +253,8 @@ fn test_matrix_split() {
     println!("m: {:?}", m);
     let m_split = matrix_split(&m, 2);
     println!("m_split: {:?}", m_split);*/
+    
+    // Realise protocol 3.9 in qesa with float values for easy test.
 
     let k: usize = 2; 
     let d: u32 = 3;
@@ -268,31 +270,32 @@ fn test_matrix_split() {
     }
 
     let mut w: Vec<f64> = (0..n).map(|i| i as f64).collect();
-    //let mut w = (0..n).collect::<Vec<_>>();
 
     println!("A:{:?}\n, w:{:?}", A, w);
-    println!("############# A*w:{:?}", matrix_vector_mul_general(&A, &w, 0.0 ));
+    let origin_t = matrix_vector_mul_general(&A, &w, 0.0 );
+    println!("############# origin_t A*w:{:?}", origin_t);
+
+    let mut t: Vec<_> = origin_t;
 
     while n > k {
         let chunk_size = n/k;
         let A_T = matrix_split(&A, chunk_size);
         let w_T: Vec<_> = matrix_split(&vec![w.clone()], chunk_size);
-        //let w_vec = w_T.pop().unwrap();
         println!("A_T:{:?}\n, w_T:{:?}", A_T, w_T);
 
         let mut i = 0;
         let mut j = 0;
-        let mut u_vec: Vec<_> = vec![vec![0.0; m]; 2*k+1];
+        let u_vec_len = 2*k+1;
+        let mut u_vec: Vec<_> = vec![vec![0.0; m]; u_vec_len];
         for A_t in A_T.clone() {
-            for w_vec in w_T.clone() {
-                println!("w_vec:{:?}", w_vec);
-                println!("A_t:{:?}, j:{:?}, i:{:?}, k:{:?}", A_t, j, i, k);
+            for w_vec in w_T.clone() { 
                 let l = k + j - i;
                 if( l != k) {
                     let u_l_t: Vec<f64> = matrix_vector_mul_general(&A_t, &w_vec[0], 0.0 );
-                    println!("l:{:?}, u_l_t:{:?}", l, u_l_t);
                     u_vec[l] = row_row_add_general(&u_vec[l], &u_l_t);
                    
+                } else {
+                    u_vec[l] = t.clone(); 
                 }
                 j += 1;
             }
@@ -304,21 +307,19 @@ fn test_matrix_split() {
 
         println!("u_vec: {:?}", u_vec);
 
-        let x: f64= 2.0;
+        let x: f64= 2.0; //rand::random::<f64>(); //random float calc may have rounding error.
         let x_vec: Vec<_> = vandemonde_vector_general(x, k, 1 as f64); 
         println!("x_vec: {:?}", x_vec);
 
         let y_vec: Vec<_> = vandemonde_vector_general(1.0/(x as f64), k, 1.0); 
         println!("y_vec: {:?}, 1/x:{:?}", y_vec, 1.0/(x as f64) );
 
-        let mut z_vec: Vec<_> = vec![1.0; 2*k+1];
+        let mut z_vec: Vec<_> = vec![1.0; 2*k+1]; //default all as one.
         for x in x_vec.clone() {
             for y in y_vec.clone() {
-                println!("x:{:?}, j:{:?}, i:{:?}, k:{:?}", x, j, i, k);
                 let l = k + j - i;
-                if( l != k) {
+                if( l != k ) {
                     let z_l_t = (x as f64) * (y as f64);
-                    println!("l:{:?}, z_l_t:{:?}", l, z_l_t);
                     z_vec[l] = z_l_t;
                    
                 }
@@ -358,16 +359,31 @@ fn test_matrix_split() {
         }
         i = 0;
 
-        println!("new_w:{:?}", new_w);
         w = new_w.pop().unwrap().pop().unwrap();
         println!("w:{:?}", w);
+
+        let mut new_t: Vec<_> = Vec::new();
+        while i < u_vec_len {
+            let tmp = vector_scalar_mul_general(&u_vec[i], &z_vec[i]);
+            if (new_t.len() == 0) {
+                new_t.push(tmp);
+            } else {
+                new_t[0] = row_row_add_general(&new_t[0], &tmp);
+            }
+            i += 1;
+        }
+        println!("new_t:{:?}", new_t);
+        t = new_t.pop().unwrap();
+        println!("t:{:?}", t);
 
         i = 0;
         j = 0;
         n = n/k;
     }
 
-    println!("new############# A*w:{:?}", matrix_vector_mul_general(&A, &w, 0.0 ));
+    let verifier_t = matrix_vector_mul_general(&A, &w, 0.0 );
+    println!("new############# A*w:{:?}", verifier_t);
+    assert_eq!(verifier_t, t);
 }
 
 #[test]
