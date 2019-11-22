@@ -571,7 +571,7 @@ fn test_lmpa_noZK_float() {
 fn test_lmpa_noZK_merlin() {
     // using merlin to make the protocol 3.9 non-interactive.
 
-    let k: usize = 3; 
+    let k: usize = 11; 
     let d: u32 = 3;
     let mut n = k.pow(d);
     println!("n:{}", n);
