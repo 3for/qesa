@@ -325,9 +325,8 @@ pub fn vandemonde_matrix(m: usize, n: usize) -> Vec<Vec<Scalar>> {
 pub fn vandemonde_vector(mut x: Scalar, n: usize) -> Vec<Scalar> {
     let mut challenges: Vec<Scalar> = Vec::new();
     challenges.push(Scalar::one());
-    for _ in 1..n {
-        challenges.push(x);
-        x = x * x;
+    for i in 0..n-1 {
+        challenges.push(challenges[i] * x);
     }
 
     challenges
@@ -339,9 +338,8 @@ where
 {
     let mut challenges: Vec<T> = Vec::new();
     challenges.push(one);
-    for _ in 1..n {
-        challenges.push(x);
-        x = x * x;
+    for i in 0..n-1 {
+        challenges.push(challenges[i] * x);
     }
 
     challenges

@@ -428,7 +428,7 @@ fn test_lmpa_noZK_float() {
     
     // Realise protocol 3.9 in qesa with float values for easy test.
 
-    let k: usize = 2; 
+    let k: usize = 4; 
     let d: u32 = 2;
     let mut n = k.pow(d);
     println!("n:{}", n);
@@ -441,7 +441,7 @@ fn test_lmpa_noZK_float() {
         i += 1;
     }
 
-    let mut w: Vec<f64> = (0..n).map(|i| i as f64).collect();
+    let mut w: Vec<f64> = (0..n).map(|i| 1 as f64).collect();
 
     println!("A:{:?}\n, w:{:?}", A, w);
     let origin_t = matrix_vector_mul_general(&A, &w, 0.0 );
@@ -571,7 +571,7 @@ fn test_lmpa_noZK_float() {
 fn test_lmpa_noZK_merlin() {
     // using merlin to make the protocol 3.9 non-interactive.
 
-    let k: usize = 2; 
+    let k: usize = 3; 
     let d: u32 = 3;
     let mut n = k.pow(d);
     println!("n:{}", n);
