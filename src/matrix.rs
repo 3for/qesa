@@ -178,7 +178,7 @@ where
 
 // More general!
 // Multiplies every element in the vector by the scalar
-// Returns the new matrix
+// Returns the new vector
 pub fn vector_scalar_mul_general<T>(
     in_vec: &Vec<T>,
     x: &T,
@@ -189,6 +189,19 @@ where
     in_vec
         .iter()
         .map(|elem| *elem * *x)
+        .collect()
+}
+
+// Multiplies every element in the vector by the scalar
+// Returns the new vector
+pub fn vectorpoint_scalar_mul(
+    in_vec: &Vec<RistrettoPoint>,
+    x: &Scalar,
+) -> Vec<RistrettoPoint> 
+{
+    in_vec
+        .iter()
+        .map(|elem| elem * x)
         .collect()
 }
 
