@@ -2,6 +2,10 @@ use crate::matrix::*;
 use crate::transcript::TranscriptProtocol;
 use curve25519_dalek::{ristretto::RistrettoPoint, scalar::Scalar};
 use merlin::Transcript;
+use std::io::Cursor;
+use byteorder::{BigEndian};
+
+
 // Linear Map Pre-Image Argument without zero knowledge
 pub struct NoZK {
     L_Vec: Vec<Vec<RistrettoPoint>>,
@@ -285,12 +289,13 @@ fn test_lmpa_noZK_float() {
 
         let mut i = 0;
         let mut j = 0;
-        let u_vec_len = 2*k+1;
-        let mut u_vec: Vec<_> = vec![vec![0.0; m]; u_vec_len];
+        let shift = k-1; //to make the index begin with 0, index of -(k-1)
+        let vec_len = 2*shift+1; // index 0~2*shift
+        let mut u_vec: Vec<_> = vec![vec![0.0; m]; vec_len];
         for A_t in A_T.clone() {
             for w_vec in w_T.clone() { 
-                let l = k + j - i;
-                if( l != k) {
+                let l = shift + j - i;
+                if( l != shift) {
                     let u_l_t: Vec<f64> = matrix_vector_mul_general(&A_t, &w_vec[0], 0.0 );
                     u_vec[l] = row_row_add_general(&u_vec[l], &u_l_t);
                    
@@ -308,17 +313,24 @@ fn test_lmpa_noZK_float() {
         println!("u_vec: {:?}", u_vec);
 
         let x: f64= 2.0; //rand::random::<f64>(); //random float calc may have rounding error.
+        /*let mut transcript = Transcript::new(b"protocol 3.9 float test");
+        let mut buf = [0u8; 32];
+        transcript.challenge_bytes(b"challenge_x", &mut buf);
+        let mut rdr = Cursor::new(buf);
+        let x: f64 = rdr.read_f64::<BigEndian>().unwrap();*/
+
+        
         let x_vec: Vec<_> = vandemonde_vector_general(x, k, 1 as f64); 
         println!("x_vec: {:?}", x_vec);
 
         let y_vec: Vec<_> = vandemonde_vector_general(1.0/(x as f64), k, 1.0); 
         println!("y_vec: {:?}, 1/x:{:?}", y_vec, 1.0/(x as f64) );
 
-        let mut z_vec: Vec<_> = vec![1.0; 2*k+1]; //default all as one.
+        let mut z_vec: Vec<_> = vec![1.0; vec_len]; //default all as one.
         for x in x_vec.clone() {
             for y in y_vec.clone() {
-                let l = k + j - i;
-                if( l != k ) {
+                let l = shift + j - i;
+                if( l != shift ) {
                     let z_l_t = (x as f64) * (y as f64);
                     z_vec[l] = z_l_t;
                    
@@ -363,7 +375,7 @@ fn test_lmpa_noZK_float() {
         println!("w:{:?}", w);
 
         let mut new_t: Vec<_> = Vec::new();
-        while i < u_vec_len {
+        while i < vec_len {
             let tmp = vector_scalar_mul_general(&u_vec[i], &z_vec[i]);
             if (new_t.len() == 0) {
                 new_t.push(tmp);
