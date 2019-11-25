@@ -27,14 +27,14 @@ pub fn create(
 
     let mut rng = rand::thread_rng();
     let r: Vec<Scalar> = (0..n).map(|_| Scalar::random(&mut rng)).collect();
-
-    let a = matrixpoint_vector_mul(&A, &r);
+    //In qesa paper section 3.4.3, computing [A]r for random r is expensive.
+    let a = matrixpoint_vector_mul(&A, &r); 
     for element in a.iter() {
         transcript.append_message(b"a", element.compress().as_bytes());
     }
 
     let beta = transcript.challenge_scalar(b"beta");
-
+    //Blinding the witness.
     let w_prime = w
         .iter()
         .zip(r.iter())
@@ -46,6 +46,79 @@ pub fn create(
     SimpleZK { a: a, no_zk: proof }
 }
 
+// Linear Map Pre-Image Argument without zero knowledge
+// Protocol 3.13 in qesa paper.
+pub struct SimpleZK_general {
+    lamp_no_zk: no_zk::lmpa_noZK,
+    a: Vec<RistrettoPoint>,
+}
+
+pub fn create_general(
+    transcript: &mut Transcript,
+    mut A: Vec<Vec<RistrettoPoint>>,
+    mut w: Vec<Scalar>,
+    mut t: Vec<RistrettoPoint>,
+    mut n: usize, 
+    m: usize,
+    k: usize,
+) -> SimpleZK_general {
+
+    let mut rng = rand::thread_rng();
+    let r: Vec<Scalar> = (0..n).map(|_| Scalar::random(&mut rng)).collect();
+    //In qesa paper section 3.4.3, computing [A]r for random r is expensive.
+    let a = matrixpoint_vector_mul(&A, &r); 
+    for element in a.iter() {
+        transcript.append_message(b"a", element.compress().as_bytes());
+    }
+
+    let beta = transcript.challenge_scalar(b"beta");
+    //Blinding the witness.
+    let w_prime: Vec<Scalar> = w
+        .iter()
+        .zip(r.iter())
+        .map(|(witness, random)| beta * witness + random)
+        .collect();
+
+    let proof = no_zk::create_lmpa_noZK(
+        transcript,
+        A.clone(),
+        w,
+        t.clone(),
+        n, //cols
+        m, //rows
+        k, //k
+        Scalar::one(), //one
+        RistrettoPoint::identity(), //zero
+    );
+
+    SimpleZK_general { a: a, lamp_no_zk: proof }
+}
+
+impl SimpleZK_general {
+    pub fn verify_general(
+        &self,
+        transcript: &mut Transcript,
+        mut A: Vec<Vec<RistrettoPoint>>,
+        mut t: Vec<RistrettoPoint>,
+        mut n: usize, 
+        m: usize,
+        k: usize,
+    ) -> bool {
+
+        for element in self.a.iter() {
+            transcript.append_message(b"a", element.compress().as_bytes());
+        }
+        let beta = transcript.challenge_scalar(b"beta");
+
+        t = t
+            .iter()
+            .zip(self.a.iter())
+            .map(|(t_i, a_i)| beta * t_i + a_i)
+            .collect();
+
+        self.lamp_no_zk.verify_lmpa_noZK(transcript, A, t, n, m, k, Scalar::one(), RistrettoPoint::identity())
+    }
+}
 
 impl SimpleZK {
     pub fn verify(
@@ -76,6 +149,34 @@ impl SimpleZK {
 }
 
 use sha3::Sha3_512;
+
+#[test]
+fn test_lmpa_ZK_merlin() {
+    let k: usize = 5; 
+    let d: u32 = 3;
+    let mut n = k.pow(d);
+    let m = 4;
+    let mut rng = rand::thread_rng();
+    let A = rand_matrix(m, n);
+    let w: Vec<Scalar> = (0..n).map(|_| Scalar::random(&mut rng)).collect();
+    let mut t = matrixpoint_vector_mul(&A, &w);
+
+    let mut transcript = Transcript::new(b"protocol 3.13 test");
+    let proof = create_general(
+        &mut transcript,
+        A.clone(),
+        w,
+        t.clone(),
+        n, //cols
+        m, //rows
+        k, //k
+    );
+
+    let mut verifier_transcript = Transcript::new(b"protocol 3.13 test");
+    assert!(proof.verify_general(&mut verifier_transcript, A, t, n, m, k));
+}
+
+
 
 #[test]
 fn test_lmpa_simple_zk_create_verify() {
