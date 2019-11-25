@@ -98,7 +98,7 @@ pub fn create_lmpa_noZK(
 ) -> lmpa_noZK
 {
     let mut u_proof: Vec<Vec<Vec<RistrettoPoint>>> = Vec::new();
-    while n > k {
+    while n >= k {
         let chunk_size = n/k;
         let A_T = matrix_split(&A, chunk_size);
         let w_T: Vec<_> = matrix_split(&vec![w.clone()], chunk_size);
@@ -429,7 +429,7 @@ fn test_lmpa_noZK_float() {
     // Realise protocol 3.9 in qesa with float values for easy test.
 
     let k: usize = 4; 
-    let d: u32 = 2;
+    let d: u32 = 3;
     let mut n = k.pow(d);
     println!("n:{}", n);
     let m = 1;
@@ -441,7 +441,7 @@ fn test_lmpa_noZK_float() {
         i += 1;
     }
 
-    let mut w: Vec<f64> = (0..n).map(|i| 1 as f64).collect();
+    let mut w: Vec<f64> = (0..n).map(|i| i as f64).collect();
 
     println!("A:{:?}\n, w:{:?}", A, w);
     let origin_t = matrix_vector_mul_general(&A, &w, 0.0 );
@@ -449,7 +449,7 @@ fn test_lmpa_noZK_float() {
 
     let mut t: Vec<_> = origin_t;
 
-    while n > k {
+    while n >= k {
         let chunk_size = n/k;
         let A_T = matrix_split(&A, chunk_size);
         let w_T: Vec<_> = matrix_split(&vec![w.clone()], chunk_size);
