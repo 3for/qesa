@@ -297,7 +297,7 @@ impl lmpa_noZK {
         zero: RistrettoPoint,
     ) -> bool {
         let mut challenge_index = 0;
-        while n > k {
+        while n >= k {
             let chunk_size = n/k;
             let A_T = matrix_split(&A, chunk_size);
 
@@ -571,7 +571,7 @@ fn test_lmpa_noZK_float() {
 fn test_lmpa_noZK_merlin() {
     // using merlin to make the protocol 3.9 non-interactive.
 
-    let k: usize = 11; 
+    let k: usize = 5; 
     let d: u32 = 3;
     let mut n = k.pow(d);
     println!("n:{}", n);
