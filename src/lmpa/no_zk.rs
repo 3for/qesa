@@ -599,13 +599,14 @@ fn test_lmpa_noZK_merlin() {
 }
 
 #[test]
-fn test_lmpa_almSnd_float() {    
+fn test_lmpa_almSnd_float_1() {    
     // Realise protocol 3.14 in qesa with float values for easy test.
-    let k: usize = 2; 
+    let k: usize = 7; 
     let d: u32 = 1;
-    let mut n = k.pow(d);
+    let cols = k.pow(d);
+    let mut n = cols;
     println!("n:{}", n);
-    let m = 2;
+    let m = 3;
     let mut i = 0;
     let mut A: Vec<_> = Vec::new();
     while i < m {
@@ -621,15 +622,15 @@ fn test_lmpa_almSnd_float() {
     let mut origin_t = matrix_vector_mul_general(&A, &w, 0.0 );
     println!("############# origin_t A*w:{:?}", origin_t);
     t_all.push(origin_t.clone());
-    let mut r: Vec<Vec<_>> = Vec::new();
-    r.push(vec![0.0; n]);
+    let mut r: Vec<_> = Vec::new();
+    r.push(w.clone()); //Fixed first one be w.
     H.push(A.clone());
     i = 0;
     while i < m {
         let mut tmp: Vec<Vec<_>> = vec![vec![0.0; n]; m];
         let my_vec: Vec<f64> = (i*n..(i+1)*n).map(|i| i as f64).collect();
         tmp[i] = my_vec;
-        let mut r_i: Vec<f64> = (0..n).map(|j| (j+i) as f64).collect();
+        let mut r_i: Vec<_> = (0..n).map(|j| (j+i) as f64).collect();
         let t_i = matrix_vector_mul_general(&tmp, &r_i, 0.0 );
         r.push(r_i);
         H.push(tmp);
@@ -645,18 +646,23 @@ fn test_lmpa_almSnd_float() {
 
 
     let mut w_all: Vec<Vec<_>> = vec![vec![0.0;n];m+1];
-    w_all[0] = vector_scalar_mul_general(&w.clone(), &x_challenge_vec[0]);
-    for i in 1..m+1 {
+    for i in 0..m+1 {
         w_all[i] = vector_scalar_mul_general(&r[i], &x_challenge_vec[i]);
     }
     println!("w_all:{:?}", w_all);
 
+    let mut t_expected: Vec<_> = vec![0.0;m];
+    for i in 0..m+1 {
+        let tmp = vector_scalar_mul_general(&t_all[i], &x_challenge_vec[i]);
+        t_expected = row_row_add_general(&t_expected, &tmp);
+    }
+    println!("t_expected:{:?}", t_expected);
 
-
-  
-
-    let mut t: Vec<_> = origin_t;
+    let mut t: Vec<_> = t_expected;
     let mut m_index = 0;
+    let mut u_block: Vec<_> = Vec::new();
+    let shift = k-1; //to make the index begin with 0, index of -(k-1)
+    let vec_len = 2*shift+1; // index 0~2*shift
     for h in H.iter() {
         A = h.clone();
         w = w_all[m_index].clone();
@@ -667,6 +673,223 @@ fn test_lmpa_almSnd_float() {
         println!("A_T:{:?}\n, w_T:{:?}", A_T, w_T);
 
         let mut i = 0;
+        let mut j = 0;        
+        let mut u_vec: Vec<_> = vec![vec![0.0; m]; vec_len];
+        for A_t in A_T.clone() {
+            for w_vec in w_T.clone() { 
+                let l = shift + j - i;
+                if( /*l != shift*/ true) {
+                    let u_l_t: Vec<f64> = matrix_vector_mul_general(&A_t, &w_vec[0], 0.0 );
+                    println!("j:{:?}, i:{:?}, l:{:?}, u_l_t:{:?}", j, i, l, u_l_t);
+                    u_vec[l] = row_row_add_general(&u_vec[l], &u_l_t);
+                   
+                } else {
+                    u_vec[l] = t.clone(); 
+                }
+                j += 1;
+            }
+            i += 1;
+            j = 0;
+        }
+        i = 0;
+        j = 0;
+
+        println!("u_vec: {:?}", u_vec);
+        u_block.push(u_vec);
+
+        i = 0;
+        j = 0;
+        n = n/k;
+    }
+        m_index += 1;
+        n = cols;
+        println!("m_index:{:?}", m_index);
+    }
+
+    let mut u_all: Vec<_> = vec![vec![0.0; m]; vec_len];
+    for u in u_block {
+        u_all = matrix_matrix_add_general(&u_all, &u);
+    }
+    println!("u_all:{:?}", u_all);
+
+    m_index = 0;
+    let mut proof_A_vec: Vec<_> = Vec::new();
+    let mut proof_w_vec: Vec<_> = Vec::new();
+    for h in H.iter() {
+        A = h.clone();
+        w = w_all[m_index].clone();
+    while n >= k {
+        let chunk_size = n/k;
+        let A_T = matrix_split(&A, chunk_size);
+        let w_T: Vec<_> = matrix_split(&vec![w.clone()], chunk_size);
+        println!("A_T:{:?}\n, w_T:{:?}", A_T, w_T);
+
+        let mut i = 0;
+        let mut j = 0;        
+        let mut u_vec: Vec<_> = u_all.clone();
+       
+        let x: f64= 2.0; 
+        
+        let x_vec: Vec<_> = vandemonde_vector_general(x, k, 1 as f64); 
+        println!("x_vec: {:?}", x_vec);
+
+        let y_vec: Vec<_> = vandemonde_vector_general(1.0/(x as f64), k, 1.0); 
+        println!("y_vec: {:?}, 1/x:{:?}", y_vec, 1.0/(x as f64) );
+
+        let mut z_vec: Vec<_> = vec![1.0; vec_len]; //default all as one.
+        for x in x_vec.clone() {
+            for y in y_vec.clone() {
+                let l = shift + j - i;
+                if( l != shift ) {
+                    let z_l_t = (x as f64) * (y as f64);
+                    z_vec[l] = z_l_t;
+                   
+                }
+                j += 1;
+            }
+            i += 1;
+            j = 0;
+        }
+        i = 0;
+        j = 0;
+        println!("z_vec: {:?}", z_vec);
+
+        let mut new_A: Vec<_> = Vec::new();
+        while i < k {
+            let tmp = matrix_scalar_mul_general(&A_T[i], &x_vec[i]);
+            if (new_A.len() == 0) {
+                new_A.push(tmp);
+            } else {
+                new_A[0] = matrix_matrix_add_general(&new_A[0], &tmp);
+            }
+            i += 1;
+        }
+        i = 0;
+        
+        A = new_A.pop().unwrap();
+        println!("A: {:?}", A);
+
+        let mut new_w: Vec<_> = Vec::new();
+        while i < k {
+            let tmp = matrix_scalar_mul_general(&w_T[i], &y_vec[i].clone());
+            if (new_w.len() == 0) {
+                new_w.push(tmp);
+            } else {
+                new_w[0] = matrix_matrix_add_general(&new_w[0], &tmp);
+            }
+            i += 1;
+        }
+        i = 0;
+
+        w = new_w.pop().unwrap().pop().unwrap();
+        println!("w:{:?}", w);
+
+        let mut new_t: Vec<_> = Vec::new();
+        while i < vec_len {
+            let tmp = vector_scalar_mul_general(&u_vec[i], &z_vec[i]);
+            if (new_t.len() == 0) {
+                new_t.push(tmp);
+            } else {
+                new_t[0] = row_row_add_general(&new_t[0], &tmp);
+            }
+            i += 1;
+        }
+        println!("new_t:{:?}", new_t);
+        t = new_t.pop().unwrap();
+        println!("t:{:?}", t);
+
+        i = 0;
+        j = 0;
+        n = n/k;
+    }
+        m_index += 1;
+        n = cols;
+        println!("m_index:{:?}", m_index);
+        proof_A_vec.push(A);
+        proof_w_vec.push(w);
+    }
+    
+
+    let mut verifier_t: Vec<_> = vec![0.0; m];
+    for (a, b) in proof_A_vec.iter().zip(proof_w_vec.iter()) {
+        let tmp = matrix_vector_mul_general(&a, &b, 0.0 );
+        verifier_t = row_row_add_general(&verifier_t,&tmp)
+    }
+
+    println!("new############# A*w:{:?}", verifier_t);
+    assert_eq!(verifier_t, t);
+}
+
+#[test]
+fn test_lmpa_almSnd_float_2() {    
+    // Realise protocol 3.14 in qesa with float values for easy test.. with different k to divide.
+    let mut k: usize = 4; 
+    let d: u32 = 1;
+    let cols = k.pow(d);
+    let mut n = cols;
+    println!("n:{}", n);
+    let m = 3;
+    let mut i = 0;
+    let mut A: Vec<_> = Vec::new();
+    while i < m {
+        let my_vec: Vec<f64> = (i*n..(i+1)*n).map(|i| i as f64).collect();
+        A.push(my_vec);
+        i += 1;
+    }
+    let mut w: Vec<_> = (0..n).map(|i| i as f64).collect();
+
+    let mut H: Vec<Vec<Vec<_>>> = Vec::new();
+    let mut t_all: Vec<Vec<_>> = Vec::new();
+    println!("A:{:?}\n, w:{:?}", A, w);
+    let mut origin_t = matrix_vector_mul_general(&A, &w, 0.0 );
+    println!("############# origin_t A*w:{:?}", origin_t);
+    t_all.push(origin_t.clone());
+    let mut r: Vec<_> = Vec::new();
+    r.push(w.clone()); //Fixed first one be w.
+    H.push(A.clone());
+    i = 0;
+    while i < m {
+        let mut tmp: Vec<Vec<_>> = vec![vec![0.0; n]; m];
+        let my_vec: Vec<f64> = (i*n..(i+1)*n).map(|i| i as f64).collect();
+        tmp[i] = my_vec;
+        let mut r_i: Vec<_> = (0..n).map(|j| (j+i) as f64).collect();
+        let t_i = matrix_vector_mul_general(&tmp, &r_i, 0.0 );
+        r.push(r_i);
+        H.push(tmp);
+        t_all.push(t_i);
+        i += 1;
+    }
+    i = 0;
+
+    let mut x_challenge_vec: Vec<f64> = (0..m+1).map(|j| (j+2) as f64).collect();
+
+    println!("H:{:?}, t_all: {:?}, x_challenge_vec:{:?}", H, t_all, x_challenge_vec);
+    println!("r:{:?}", r);
+
+
+    let mut w_all: Vec<Vec<_>> = vec![vec![0.0;n];m+1];
+    for i in 0..m+1 {
+        w_all[i] = vector_scalar_mul_general(&r[i], &x_challenge_vec[i]);
+    }
+    println!("w_all:{:?}", w_all);
+
+    let mut t_expected: Vec<_> = vec![0.0;m];
+    for i in 0..m+1 {
+        let tmp = vector_scalar_mul_general(&t_all[i], &x_challenge_vec[i]);
+        t_expected = row_row_add_general(&t_expected, &tmp);
+    }
+    println!("t_expected:{:?}", t_expected);
+
+    let mut t: Vec<_> = t_expected;
+    n = n+m*n;
+    k = m+1;
+    while n >= k {
+        let chunk_size = n/k;
+        let A_T = H.clone(); //matrix_split(&A, chunk_size);
+        let w_T: Vec<_> = w_all.clone();
+        println!("A_T:{:?}\n, w_T:{:?}", A_T, w_T);
+
+        let mut i = 0;
         let mut j = 0;
         let shift = k-1; //to make the index begin with 0, index of -(k-1)
         let vec_len = 2*shift+1; // index 0~2*shift
@@ -674,8 +897,8 @@ fn test_lmpa_almSnd_float() {
         for A_t in A_T.clone() {
             for w_vec in w_T.clone() { 
                 let l = shift + j - i;
-                if( l != shift) {
-                    let u_l_t: Vec<f64> = matrix_vector_mul_general(&A_t, &w_vec[0], 0.0 );
+                if( /*l != shift*/ true) {
+                    let u_l_t: Vec<f64> = matrix_vector_mul_general(&A_t, &w_vec, 0.0 );
                     println!("j:{:?}, i:{:?}, l:{:?}, u_l_t:{:?}", j, i, l, u_l_t);
                     u_vec[l] = row_row_add_general(&u_vec[l], &u_l_t);
                    
@@ -741,11 +964,15 @@ fn test_lmpa_almSnd_float() {
 
         let mut new_w: Vec<_> = Vec::new();
         while i < k {
-            let tmp = matrix_scalar_mul_general(&w_T[i], &y_vec[i]);
+            println!("i:{:?}, k:{:?}", i, k);
+            let tmp = matrix_scalar_mul_general(&vec![w_T[i].clone()], &y_vec[i]);
+            println!("tmp: {:?}, i:{:?}, k:{:?}", tmp, i, k);
             if (new_w.len() == 0) {
+                println!("xxxx");
                 new_w.push(tmp);
             } else {
                 new_w[0] = matrix_matrix_add_general(&new_w[0], &tmp);
+                println!("yyyy");
             }
             i += 1;
         }
@@ -772,10 +999,9 @@ fn test_lmpa_almSnd_float() {
         j = 0;
         n = n/k;
     }
-    //m_index += 1;
-    }
 
     let verifier_t = matrix_vector_mul_general(&A, &w, 0.0 );
     println!("new############# A*w:{:?}", verifier_t);
     assert_eq!(verifier_t, t);
 }
+
