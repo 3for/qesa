@@ -260,6 +260,7 @@ mod tests {
                 // Use gram schmidt to create suitable solutions for each system of eqns
                 let x: Vec<Scalar> = (0..n).map(|_| Scalar::random(&mut rng)).collect();
                 let row_of_eqns = crate::ipa::gramschmidt::orth(&witness, &x);
+                assert_eq!(Scalar::zero(), inner_product(&witness, &row_of_eqns));
                 gamma_i.push(row_of_eqns)
             }
             bm.push(gamma_i);
@@ -271,14 +272,85 @@ mod tests {
 
     #[test]
     fn test_helper_solutions() {
-        let n = 4;
+        let n = 14;
 
-        let (witness, matrix) = helper_create_solutions(n - 2, 2);
+        let (witness, matrix) = helper_create_solutions(n - 2, 3);
 
         // Check that <w, gamma_i * w> = 0 for all i
         for gamma_i in matrix.block.iter() {
             let gamma_w = matrix_vector_mul(&gamma_i, &witness);
+            //println!("gamma_w:{:?}", gamma_w); // Not quite suitable, it's always zero.
             assert_eq!(Scalar::zero(), inner_product(&witness, &gamma_w))
         }
+    }
+
+    // Creates a system of quadratic equations with solutions
+    // and a witness
+    fn helper_create_solutions_vatalik_g1(n: usize, num_of_matrices: usize) -> (Vec<Scalar>, BlockMatrix) {
+        let mut rng = rand::thread_rng();
+        let mut witness: Vec<Scalar> = (0..n).map(|_| Scalar::random(&mut rng)).collect();
+        witness[0] = Scalar::one();
+        witness[1] = Scalar::from(0x03 as u64);
+        witness[3] = Scalar::from(0x09 as u64);
+        witness[n-1] = Scalar::zero();
+
+        assert_eq!(witness[3], witness[1] * witness[1]);
+
+        let mut bm = BlockMatrix::new();
+
+        for _ in 0..num_of_matrices {
+            let mut gamma_i: Vec<Vec<Scalar>> = vec![vec![Scalar::zero();n];n];
+            gamma_i[1][1] = Scalar::one();
+            gamma_i[3][0] = -Scalar::one();
+            bm.push(gamma_i);
+        }
+
+        // For now, we only use one set of system of equations
+        (witness, bm)
+    }
+
+    #[test]
+    fn test_helper_solutions_vitalik_g1() {
+        let n = 8;
+
+        let (witness, matrix) = helper_create_solutions_vatalik_g1(n - 2, 1);
+       
+        // Check that <w, gamma_i * w> = 0 for all i
+        for gamma_i in matrix.block.iter() {
+            let gamma_i_T = matrix_transpose(&gamma_i);
+            println!("gamma_i_T:{:?}", gamma_i_T);
+            let gamma_w = matrix_vector_mul(&gamma_i_T, &witness);      
+            assert_eq!(Scalar::zero(), inner_product(&witness, &gamma_w))
+        }
+    }
+
+    #[test]
+    fn test_create_qesa_inner_proof_vitalik_g1() {
+        let mut rng = rand::thread_rng();
+
+        let n = 8;
+
+        let (witness, matrix) = helper_create_solutions_vatalik_g1(n - 2, 2);
+
+        let G: Vec<RistrettoPoint> = (0..n).map(|_| RistrettoPoint::random(&mut rng)).collect();
+        let H: Vec<RistrettoPoint> = (0..n).map(|_| RistrettoPoint::random(&mut rng)).collect();
+        let Q = RistrettoPoint::hash_from_bytes::<Sha3_512>(b"test point");
+
+        let r_prime: Vec<Scalar> = (0..2).map(|_| Scalar::random(&mut rng)).collect();
+
+        let mut prover_transcript = Transcript::new(b"qesa_inner");
+
+        let proof = create(
+            &mut prover_transcript,
+            G.clone(),
+            H.clone(),
+            &Q,
+            &matrix,
+            witness,
+            r_prime,
+        );
+
+        let mut verifier_transcript = Transcript::new(b"qesa_inner");
+        assert!(proof.verify(&mut verifier_transcript, G, H, &Q, &matrix))
     }
 }

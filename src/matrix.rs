@@ -264,7 +264,6 @@ pub fn matrixpoint_transpose(
     let m = matrix.len();
     assert!(m > 0);
     let n = matrix[0].len();
-    println!("zouyudi-m:{:?}, n:{:?}", m, n);
     let mut matrix_transpose = vec![Vec::new(); matrix[0].len()];
     /*matrix
         .iter().enumerate()
