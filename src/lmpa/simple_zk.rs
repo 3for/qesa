@@ -246,7 +246,27 @@ fn test_lmpa_simple_zk_create_verify_efficient_communication() {
     assert!(proof.verify(&mut verifier_transcript, A_efficient, G, H, &Q, n, t_efficient));
 }
 
+#[test]
+fn test_commitment_combination() {
+    let n = 1;
+    let mut rng = rand::thread_rng();
 
+    let G: Vec<RistrettoPoint> = (0..n).map(|_| RistrettoPoint::random(&mut rng)).collect();
+    let G0: RistrettoPoint = RistrettoPoint::random(&mut rng);
+
+    let w_1 = Scalar::random(&mut rng);
+    let w_2 = Scalar::random(&mut rng);
+    let r_1 = Scalar::random(&mut rng);
+    let r_2 = Scalar::random(&mut rng);
+    let c_1 = pedersen_commit(&G0, &G.clone(), &vec![w_1.clone()], &r_1);
+    let c_2 = pedersen_commit(&G0, &G.clone(), &vec![w_2.clone()], &r_2);
+    let a_1 = &Scalar::random(&mut rng);
+    let a_2 = &Scalar::random(&mut rng);
+    let w_combined = &w_1 * a_1 + &w_2 * a_2;
+    let r_combined = &r_1 * a_1 + &r_2 * a_2;
+    let c_combined = pedersen_commit(&G0, &G.clone(), &vec![w_combined.clone()], &r_combined);
+    assert_eq!(a_1 * &c_1 + a_2*&c_2, c_combined);
+}
 
 #[test]
 fn test_lmpa_batch() {
@@ -273,7 +293,7 @@ fn test_lmpa_batch() {
     // pedersen commitment of w.
     let r_w: Scalar = Scalar::random(&mut rng);
     let c_w = pedersen_commit(&G0, &G.clone(), &w.clone(), &r_w);
-    
+ 
     let t = matrixpoint_vector_mul(&A_efficient.clone(), &w);
     let t_efficient = matrixpoint_vector_mul(&matrixpoint_transpose(&vec![t; 1]), &Y);
 
